@@ -31,9 +31,6 @@ abstract class QuickCheckHeap extends Properties("Heap") with IntHeap {
   }
 
   property("sorting") = forAll { h: H =>
-    def heapToList(heap: H): List[Int] =
-      if (isEmpty(heap)) Nil else findMin(heap) :: heapToList(deleteMin(heap))
-
     val list: List[Int] = heapToList(h)
     list.sorted == list
   }
@@ -47,6 +44,17 @@ abstract class QuickCheckHeap extends Properties("Heap") with IntHeap {
       meldedMin == m1 || meldedMin == m2
     } else true
   }
+
+  property("melding and sorting") = forAll { (heaps: (H, H)) =>
+    val l1 = heapToList(heaps._1)
+    val l2 = heapToList(heaps._2)
+    val melded = meld(heaps._1, heaps._2)
+    val lMelded = heapToList(melded)
+    (l1 ++ l2).sorted == lMelded
+  }
+
+  def heapToList(heap: H): List[Int] =
+    if (isEmpty(heap)) Nil else findMin(heap) :: heapToList(deleteMin(heap))
 
   lazy val genHeap: Gen[H] =
     for {
