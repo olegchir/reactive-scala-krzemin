@@ -76,8 +76,25 @@ abstract class CircuitSimulator extends Simulator {
     inverter(r, output)
   }
 
+
   def demux(in: Wire, c: List[Wire], out: List[Wire]) {
-    ???
+    require(out.size == scala.math.pow(2, c.size), "c must be 2^out")
+
+    def bypass(input: Wire, output: Wire) {
+      input addAction { () => output.setSignal(input.getSignal) }
+    }
+    
+    c match {
+      case Nil => bypass(in, out.head)
+      case cn :: cns =>
+        val (out0, out1) = out.splitAt(out.size / 2)
+        val a0, a1, b = new Wire
+        inverter(cn, b)
+        andGate(in, cn, a0)
+        andGate(in, b, a1)
+        demux(a0, cns, out0)
+        demux(a1, cns, out1)
+    }
   }
 
 }
