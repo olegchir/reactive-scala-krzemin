@@ -22,8 +22,13 @@ class EpidemySimulator extends Simulator {
   val numHealthy = (population - numInitiallySick).toInt
 
   val persons: List[Person] =
-    List.fill(numInitiallySick)(new Person(0) { infected = true }) ++
-    List.fill(numHealthy)(new Person(0) { infected = false })
+    List.fill(numInitiallySick)(new Person(0) { infect() }) ++
+    List.fill(numHealthy)(new Person(0))
+
+  def findPeopleByRowCol(r: Int, c: Int): List[Person] =
+    persons filter ((p) => (r, c) == (p.row, p.col))
+
+  def deadOrSick(p: Person) = p.dead || p.sick
 
   class Person (val id: Int) {
     var infected = false
@@ -36,17 +41,49 @@ class EpidemySimulator extends Simulator {
     var col: Int = randomBelow(roomColumns)
 
     def moveNextRoom() {
-      val (dx, dy) = (randomBelow(2) * 2 - 1, randomBelow(2) * 2 - 1)
-      row = (row + roomRows + dx) % roomRows
-      col = (col + roomColumns + dy) % roomColumns
+      val nextCandidates: List[(Int, Int)] =
+        List((1, 0), (0, 1), (-1, 0), (0, -1))
+          .filter { case (r, c) =>
+            !(findPeopleByRowCol(r + row, c + col).exists(deadOrSick)) }
+
+      if(!nextCandidates.isEmpty) {
+        val (dx, dy) = nextCandidates(randomBelow(nextCandidates.size))
+        row = (row + roomRows + dx) % roomRows
+        col = (col + roomColumns + dy) % roomColumns
+      }
+    }
+
+    def infectInRoom() {
+      val peopleInCurrentRoom = findPeopleByRowCol(row, col)
+      if(peopleInCurrentRoom.exists((p) => p.infected) && !infected) {
+        if(random <= transmissibilityRate) infect()
+      }
     }
 
     def setupNextMovement() {
       afterDelay(1 + randomBelow(4)) {
-        moveNextRoom()
-        setupNextMovement()
+        if(!dead) {
+          moveNextRoom()
+          infectInRoom()
+          setupNextMovement()
+        }
       }
     }
+
+    def infect() {
+      infected = true
+      afterDelay(6) { sick = true }
+      afterDelay(14) { if (randomBelow(4) == 0) { dead = true } }
+      afterDelay(16) { if(!dead) { immune = true } }
+      afterDelay(18) {
+        if(!dead && immune) {
+          immune = false
+          sick = false
+          infected = false
+        }
+      }
+    }
+
 
     setupNextMovement()
   }
