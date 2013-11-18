@@ -64,7 +64,9 @@ class EpidemySimulator extends Simulator {
       afterDelay(1 + randomBelow(4)) {
         if(!dead) {
           moveNextRoom()
-          infectInRoom()
+          if(!infected && !immune) {
+            infectInRoom()
+          }
           setupNextMovement()
         }
       }
@@ -74,11 +76,10 @@ class EpidemySimulator extends Simulator {
       infected = true
       afterDelay(6) { sick = true }
       afterDelay(14) { if (randomBelow(4) == 0) { dead = true } }
-      afterDelay(16) { if(!dead) { immune = true } }
+      afterDelay(16) { if(!dead) { sick = false ; immune = true } }
       afterDelay(18) {
         if(!dead && immune) {
           immune = false
-          sick = false
           infected = false
         }
       }
