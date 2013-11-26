@@ -34,6 +34,13 @@ class NodeScalaSuite extends FunSuite {
     }
   }
 
+  test("all") {
+    val futures = List(Future.always(10), Future.always(20), Future.always(30))
+    val all = Future.all(futures)
+    assert(Await.result(all, 0 nanos) === List(10, 20, 30))
+  }
+
+
   test("CancellationTokenSource should allow stopping the computation") {
     val cts = CancellationTokenSource()
     val ct = cts.cancellationToken
