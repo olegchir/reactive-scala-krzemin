@@ -47,6 +47,21 @@ class NodeScalaSuite extends FunSuite {
     assert(List(10,20).contains(result))
   }
 
+  test("delay") {
+    val fut1 = Future.delay(100 millis)
+    val res1 = Await.result(fut1, 200 millis)
+    assert(res1 === ())
+
+    val fut2 = Future.delay(500 millis)
+    try {
+      Await.result(fut2, 100 millis)
+      assert(false)
+    } catch {
+      case t: TimeoutException => // ok!
+    }
+  }
+
+
 
   test("CancellationTokenSource should allow stopping the computation") {
     val cts = CancellationTokenSource()
