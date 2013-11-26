@@ -61,6 +61,21 @@ class NodeScalaSuite extends FunSuite {
     }
   }
 
+  test("now1") {
+    val fut = Future { 10 }
+    Thread.sleep(10)
+    assert(fut.now === 10)
+  }
+
+  test("now2") {
+    val fut = Future { Thread.sleep(100); 10 }
+    try {
+      fut.now
+      assert(false)
+    } catch {
+      case t: NoSuchElementException => // ok!
+    }
+  }
 
 
   test("CancellationTokenSource should allow stopping the computation") {
