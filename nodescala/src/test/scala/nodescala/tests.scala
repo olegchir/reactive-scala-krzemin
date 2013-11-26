@@ -37,7 +37,14 @@ class NodeScalaSuite extends FunSuite {
   test("all") {
     val futures = List(Future.always(10), Future.always(20), Future.always(30))
     val all = Future.all(futures)
-    assert(Await.result(all, 0 nanos) === List(10, 20, 30))
+    assert(Await.result(all, 500 millis) === List(10, 20, 30))
+  }
+
+  test("any") {
+    val futures = List(Future { 10 }, Future { 20 })
+    val any = Future.any(futures)
+    val result = Await.result(any, 500 millis)
+    assert(List(10,20).contains(result))
   }
 
 
