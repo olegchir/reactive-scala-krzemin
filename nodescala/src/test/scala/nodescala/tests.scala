@@ -77,6 +77,27 @@ class NodeScalaSuite extends FunSuite {
     }
   }
 
+  test("continue") {
+    val fut1 = Future { 10 }
+    val fut2 = Future { throw new Exception }
+
+    def cont: Try[Int] => Int = {
+      case Success(n) => 2 * n
+      case _ => 0
+    }
+
+    assert( Await.result(fut1.continue(cont), 10 millis) === 20 )
+
+    try {
+      val fut3 = fut2.continue(cont)
+      Await.result(fut3, 10 millis)
+      assert(false)
+    } catch {
+      case t: Throwable => // ok!
+    }
+  }
+
+
 
   test("CancellationTokenSource should allow stopping the computation") {
     val cts = CancellationTokenSource()
