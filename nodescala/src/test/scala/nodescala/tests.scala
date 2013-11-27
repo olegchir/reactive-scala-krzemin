@@ -77,9 +77,29 @@ class NodeScalaSuite extends FunSuite {
     }
   }
 
+  test("continueWith") {
+    val fut1 = Future { 10 }
+    val fut2 = Future[Int] { throw new Exception }
+
+    def cont(f: Future[Int]): Int = {
+      val result = f.value.get.get
+      2 * result
+    }
+
+    assert( Await.result(fut1.continueWith(cont), 10 millis) === 20 )
+
+    try {
+      val fut3 = fut2.continueWith(cont)
+      Await.result(fut3, 10 millis)
+      assert(false)
+    } catch {
+      case t: Throwable => // ok!
+    }
+  }
+
   test("continue") {
     val fut1 = Future { 10 }
-    val fut2 = Future { throw new Exception }
+    val fut2 = Future[Int] { throw new Exception }
 
     def cont: Try[Int] => Int = {
       case Success(n) => 2 * n
