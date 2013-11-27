@@ -62,7 +62,9 @@ package object nodescala {
     /** Returns a future with a unit value that is completed after time `t`.
      */
     def delay(t: Duration): Future[Unit] = Future[Unit] {
-      Thread.sleep(t.toMillis)
+      blocking {
+        Thread.sleep(t.toMillis)
+      }
       ()
     }
 
@@ -155,7 +157,16 @@ package object nodescala {
   object CancellationTokenSource {
     /** Creates a new `CancellationTokenSource`.
      */
-    def apply(): CancellationTokenSource = ???
+    def apply(): CancellationTokenSource = new CancellationTokenSource {
+      val p = Promise[Unit]()
+      def cancellationToken: CancellationToken = new CancellationToken {
+        def isCancelled: Boolean = p.future.value != None
+      }
+
+      def unsubscribe(): Unit = {
+        p.trySuccess(())
+      }
+    }
   }
 
 }
