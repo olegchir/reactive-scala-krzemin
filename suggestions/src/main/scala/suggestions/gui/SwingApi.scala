@@ -58,6 +58,7 @@ trait SwingApi {
       val subject = PublishSubject[String]("")
       field subscribe {
         case ValueChanged(v) => subject.onNext(v.text)
+        case _ =>
       }
       subject
     }
@@ -74,6 +75,7 @@ trait SwingApi {
       val subject = PublishSubject[Button](button)
       button subscribe {
         case ButtonClicked(b) => subject.onNext(b)
+        case _ =>
       }
       subject
     }
