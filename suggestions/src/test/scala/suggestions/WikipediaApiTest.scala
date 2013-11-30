@@ -66,7 +66,7 @@ class WikipediaApiTest extends FunSuite {
     val sub = sum.subscribe {
       s => total = s
     }
-    assert(total == (1 + 1 + 2 + 1 + 2 + 3), s"Sum: $total")
+    assert(total === (1 + 1 + 2 + 1 + 2 + 3), s"Sum: $total")
   }
 
   test("timedOut_1") {

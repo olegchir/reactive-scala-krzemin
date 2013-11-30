@@ -51,7 +51,7 @@ trait WikipediaApi {
      * E.g. `1, 2, 3, !Exception!` should become `Success(1), Success(2), Success(3), Failure(Exception), !TerminateStream!`
      */
     def recovered: Observable[Try[T]] = obs.materialize
-      .takeWhile { case _: OnCompleted[_] => true ; case _ => false }
+      .takeWhile { case _: OnCompleted[_] => false ; case _ => true }
       .map {
         case OnNext(v) => Success(v)
         case OnError(e) => Failure(e)
@@ -97,7 +97,8 @@ trait WikipediaApi {
      *
      * Observable(1, 1, 1, 2, 2, 2, 3, 3, 3)
      */
-    def concatRecovered[S](requestMethod: T => Observable[S]): Observable[Try[S]] = ???
+    def concatRecovered[S](requestMethod: T => Observable[S]): Observable[Try[S]] =
+      obs.flatMap(requestMethod).recovered
 
   }
 
