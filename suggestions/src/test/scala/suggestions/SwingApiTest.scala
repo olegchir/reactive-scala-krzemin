@@ -85,6 +85,28 @@ class SwingApiTest extends FunSuite {
     textField.text = "Turin"
     textField.text = "Turing"
 
-    assert(observed == Seq("T", "Tu", "Tur", "Turi", "Turin", "Turing"), observed)
+    assert(observed === Seq("T", "Tu", "Tur", "Turi", "Turin", "Turing"), observed)
   }
+
+  test("SwingApi could be unsubscribed") {
+    val textField = new swingApi.TextField
+    val values = textField.textValues
+
+    val observed = mutable.Buffer[String]()
+    val sub = values subscribe {
+      observed += _
+    }
+
+    // write some text now
+    textField.text = "T"
+    textField.text = "Tu"
+    textField.text = "Tur"
+    sub.unsubscribe()
+    textField.text = "Turi"
+    textField.text = "Turin"
+    textField.text = "Turing"
+
+    assert(observed === Seq("T", "Tu", "Tur"), observed)
+  }
+
 }
