@@ -9,10 +9,10 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{ Try, Success, Failure }
 import rx.subscriptions.CompositeSubscription
-import rx.lang.scala._
+import rx.lang.scala.Observable
 import observablex._
 import search._
-import rx.lang.scala.Notification.{OnCompleted, OnError, OnNext}
+import rx.lang.scala.Notification.{OnError, OnNext, OnCompleted}
 import rx.lang.scala.subscriptions.Subscription
 
 trait WikipediaApi {
@@ -53,9 +53,9 @@ trait WikipediaApi {
     def recovered: Observable[Try[T]] = obs.materialize
       .takeWhile { case _: OnCompleted[_] => false ; case _ => true }
       .map {
-        case OnNext(v) => Success(v)
-        case OnError(e) => Failure(e)
-      }
+      case OnNext(v) => Success(v)
+      case OnError(e) => Failure(e)
+    }
 
     /** Emits the events from the `obs` observable, until `totalSec` seconds have elapsed.
      *
@@ -71,6 +71,7 @@ trait WikipediaApi {
           Subscription { }
         }
       }
+
 
     /** Given a stream of events `obs` and a method `requestMethod` to map a request `T` into
      * a stream of responses `S`, returns a stream of all the responses wrapped into a `Try`.
@@ -95,10 +96,10 @@ trait WikipediaApi {
      *
      * should return:
      *
-     * Observable(1, 1, 1, 2, 2, 2, 3, 3, 3)
+     * Observable(Success(1), Succeess(1), Succeess(1), Succeess(2), Succeess(2), Succeess(2), Succeess(3), Succeess(3), Succeess(3))
      */
     def concatRecovered[S](requestMethod: T => Observable[S]): Observable[Try[S]] =
-      obs.flatMap(requestMethod).recovered
+      obs.flatMap(req => requestMethod(req).recovered)
 
   }
 

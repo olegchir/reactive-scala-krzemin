@@ -10,10 +10,11 @@ import scala.util.{Try, Success, Failure}
 import rx.lang.scala._
 import org.scalatest._
 import gui._
+
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import scala.collection.mutable
-import rx.lang.scala.subscriptions.{BooleanSubscription, Subscription}
+import suggestions.observablex.ObservableEx
 
 
 @RunWith(classOf[JUnitRunner])
@@ -66,7 +67,7 @@ class WikipediaApiTest extends FunSuite {
     val sub = sum.subscribe {
       s => total = s
     }
-    assert(total === (1 + 1 + 2 + 1 + 2 + 3), s"Sum: $total")
+    assert(total == (1 + 1 + 2 + 1 + 2 + 3), s"Sum: $total")
   }
 
   test("timedOut_1") {
@@ -80,5 +81,12 @@ class WikipediaApiTest extends FunSuite {
   test("timedOut_2 (this test should also took about 1 second, not 70 seconds!)") {
     val stream = Observable(1 to 100).zip(Observable.interval(700 millis))
     assert(stream.timedOut(1).toBlockingObservable.toList === List((1,0)))
+  }
+
+  test("Future should give result on Observable") {
+
+    val f = Future(blocking{5})
+    val o = ObservableEx(f)
+    assert(o.toBlockingObservable.single === 5)
   }
 }

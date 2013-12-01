@@ -9,10 +9,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{ Try, Success, Failure }
 import scala.swing.Reactions.Reaction
 import scala.swing.event.Event
-import rx.lang.scala._
-import rx.lang.scala.subscriptions._
-import rx.lang.scala.subjects._
-
+import rx.lang.scala.Observable
+import rx.lang.scala.subjects.PublishSubject
 
 /** Basic facilities for dealing with Swing-like components.
 *
@@ -62,6 +60,7 @@ trait SwingApi {
       }
       subject
     }
+
   }
 
   implicit class ButtonOps(button: Button) {

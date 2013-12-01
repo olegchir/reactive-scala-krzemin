@@ -6,8 +6,9 @@ import scala.util._
 import scala.util.Success
 import scala.util.Failure
 import java.lang.Throwable
-import rx.lang.scala._
-import rx.lang.scala.subjects._
+import rx.lang.scala.Observable
+import rx.lang.scala.Scheduler
+import rx.lang.scala.subjects.ReplaySubject
 
 object ObservableEx {
 

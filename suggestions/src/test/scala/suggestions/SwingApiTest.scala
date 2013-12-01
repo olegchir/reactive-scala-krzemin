@@ -85,7 +85,7 @@ class SwingApiTest extends FunSuite {
     textField.text = "Turin"
     textField.text = "Turing"
 
-    assert(observed === Seq("T", "Tu", "Tur", "Turi", "Turin", "Turing"), observed)
+    assert(observed == Seq("T", "Tu", "Tur", "Turi", "Turin", "Turing"), observed)
   }
 
   test("SwingApi could be unsubscribed") {
@@ -108,5 +108,4 @@ class SwingApiTest extends FunSuite {
 
     assert(observed === Seq("T", "Tu", "Tur"), observed)
   }
-
 }

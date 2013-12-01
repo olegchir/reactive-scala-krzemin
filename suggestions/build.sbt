@@ -38,6 +38,14 @@ libraryDependencies <++= (currentProject) { c =>
   else Seq.empty
 }
 
+libraryDependencies <++= (currentProject) { c =>
+  if (c.isEmpty || c == "actorbintree") Seq(
+    "com.typesafe.akka" %% "akka-actor" % "2.2.3",
+    "com.typesafe.akka" %% "akka-testkit" % "2.2.3"
+    )
+  else Seq.empty
+}
+
 // See documentation in ProgFunBuild.scala
 projectDetailsMap := {
 val currentCourseId = "reactive-001"
@@ -105,6 +113,12 @@ Map(
   "suggestions" -> ProjectDetails(
                   packageName = "suggestions",
                   assignmentPartId = "rLLdQLGN",
+                  maxScore = 10d,
+                  styleScoreRatio = 0.0,
+                  courseId=currentCourseId),
+  "actorbintree" -> ProjectDetails(
+                  packageName = "actorbintree",
+                  assignmentPartId = "VxIlIKoW",
                   maxScore = 10d,
                   styleScoreRatio = 0.0,
                   courseId=currentCourseId)
