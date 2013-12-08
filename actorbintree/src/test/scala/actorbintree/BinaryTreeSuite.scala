@@ -59,6 +59,18 @@ class BinaryTreeSuite(_system: ActorSystem) extends TestKit(_system) with FunSui
     expectMsg(ContainsResult(3, true))
   }
 
+  test("simple GC without removing") {
+    val topNode = system.actorOf(Props[BinaryTreeSet])
+
+    topNode ! Insert(testActor, id=10, 1)
+    expectMsg(OperationFinished(id=10))
+    topNode ! Contains(testActor, id=20, 1)
+    expectMsg(ContainsResult(id=20, true))
+    topNode ! GC
+    topNode ! Contains(testActor, id=30, 1)
+    expectMsg(ContainsResult(id=30, true))
+  }
+
   test("instruction example") {
     val requester = TestProbe()
     val requesterRef = requester.ref
@@ -106,7 +118,7 @@ class BinaryTreeSuite(_system: ActorSystem) extends TestKit(_system) with FunSui
 
     verify(requester, ops, expectedReplies)
   }
-  
+
   test("behave identically to built-in set (includes GC)") {
     val rnd = new Random()
     def randomOperations(requester: ActorRef, count: Int): Seq[Operation] = {
@@ -145,12 +157,8 @@ class BinaryTreeSuite(_system: ActorSystem) extends TestKit(_system) with FunSui
     val expectedReplies = referenceReplies(ops)
 
     ops foreach { op =>
-      println("performing ", op.toString)
       topNode ! op
-      if (rnd.nextDouble() < 0.1) {
-        println("performing GC !!!!!!!!!!!")
-        topNode ! GC
-      }
+      if (rnd.nextDouble() < 0.1) topNode ! GC
     }
     receiveN(requester, ops, expectedReplies)
   }
