@@ -66,13 +66,23 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
       sender ! OperationAck(id)
   }
 
+  var snapshotSeq = 0
+
   /* TODO Behavior for the replica role. */
   val replica: Receive = {
     case Get(key, id) =>
       val valueOption = kv.get(key)
       sender ! GetResult(key, valueOption, id)
-
-    case _ =>
+    case Snapshot(key, valueOption, seq) =>
+      if (seq == snapshotSeq) {
+        valueOption match {
+          case None => kv -= key
+          case Some(value) => kv += key -> value
+        }
+        snapshotSeq += 1
+      }
+      if(seq < snapshotSeq)
+        sender ! SnapshotAck(key, seq)
   }
 
 }
