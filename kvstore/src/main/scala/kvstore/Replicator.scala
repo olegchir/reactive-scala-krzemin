@@ -4,6 +4,7 @@ import akka.actor.Props
 import akka.actor.Actor
 import akka.actor.ActorRef
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 object Replicator {
   case class Replicate(key: String, valueOption: Option[String], id: Long)
@@ -35,10 +36,23 @@ class Replicator(val replica: ActorRef) extends Actor {
     _seqCounter += 1
     ret
   }
-  
+
   /* TODO Behavior for the Replicator. */
   def receive: Receive = {
-    case _ =>
+    case replicate @ Replicate(key, valueOption, seq) =>
+      acks += seq -> (sender, replicate)
+      replica ! Snapshot(key, valueOption, seq)
+      def resendMsg: Unit = {
+      acks.get(seq) match {
+        case Some((_, Replicate(key, valueOption, seq_))) =>
+          replica ! Snapshot(key, valueOption, seq_)
+          context.system.scheduler.scheduleOnce(250 millis)(resendMsg)
+        case None =>
+      }
+    }
+      context.system.scheduler.scheduleOnce(250 millis)(resendMsg)
+    case SnapshotAck(key, seq) =>
+      acks -= seq
   }
 
 }
