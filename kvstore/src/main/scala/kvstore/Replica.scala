@@ -47,6 +47,9 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
   // the current set of replicators
   var replicators = Set.empty[ActorRef]
 
+  var snapshotSeq = 0
+  var acks = Map.empty[Long, ActorRef]
+
   arbiter ! Join
 
   val persistence = context.actorOf(persistenceProps)
@@ -58,19 +61,52 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
 
   /* TODO Behavior for  the leader role. */
   val leader: Receive = {
+
     case Get(key, id) =>
       val valueOption = kv.get(key)
       sender ! GetResult(key, valueOption, id)
+
     case Insert(key, value, id) =>
       kv += (key -> value)
-      sender ! OperationAck(id)
+      acks += id -> sender
+      def resendPersistence: Unit = {
+        if(acks.contains(id)) {
+          persistence ! Persist(key, Some(value), id)
+          context.system.scheduler.scheduleOnce(100 millis)(resendPersistence)
+        }
+      }
+      resendPersistence
+      context.system.scheduler.scheduleOnce(1 second) {
+        if(acks.contains(id)) {
+          val sender = acks(id)
+          acks -= id
+          sender ! OperationFailed(id)
+        }
+      }
+
     case Remove(key, id) =>
       kv -= key
+      acks += id -> sender
+      def resendPersistence: Unit = {
+        if(acks.contains(id)) {
+          persistence ! Persist(key, None, id)
+          context.system.scheduler.scheduleOnce(100 millis)(resendPersistence)
+        }
+      }
+      resendPersistence
+      context.system.scheduler.scheduleOnce(1 second) {
+        if(acks.contains(id)) {
+          val sender = acks(id)
+          acks -= id
+          sender ! OperationFailed(id)
+        }
+      }
+
+    case Persisted(key, id) =>
+      val sender = acks(id)
+      acks -= id
       sender ! OperationAck(id)
   }
-
-  var snapshotSeq = 0
-  var acks = Map.empty[Long, ActorRef]
 
   /* TODO Behavior for the replica role. */
   val replica: Receive = {
