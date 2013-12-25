@@ -48,6 +48,8 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
 
   arbiter ! Join
 
+  val persistence = context.actorOf(persistenceProps)
+
   def receive = {
     case JoinedPrimary   => context.become(leader)
     case JoinedSecondary => context.become(replica)
@@ -67,6 +69,7 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
   }
 
   var snapshotSeq = 0
+  var acks = Map.empty[Long, ActorRef]
 
   /* TODO Behavior for the replica role. */
   val replica: Receive = {
@@ -74,15 +77,25 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
       val valueOption = kv.get(key)
       sender ! GetResult(key, valueOption, id)
     case Snapshot(key, valueOption, seq) =>
+      if(seq < snapshotSeq)
+        sender ! SnapshotAck(key, seq)
+
       if (seq == snapshotSeq) {
         valueOption match {
           case None => kv -= key
           case Some(value) => kv += key -> value
         }
         snapshotSeq += 1
+        acks += seq -> sender
+        persistence ! Persist(key, valueOption, seq)
       }
-      if(seq < snapshotSeq)
-        sender ! SnapshotAck(key, seq)
+
+    case Persisted(key, id) =>
+       val sender = acks(id)
+       acks -= id
+       sender ! SnapshotAck(key, id)
+
+
   }
 
 }
