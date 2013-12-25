@@ -41,16 +41,16 @@ class Replicator(val replica: ActorRef) extends Actor {
   def receive: Receive = {
     case replicate @ Replicate(key, valueOption, seq) =>
       acks += seq -> (sender, replicate)
-      replica ! Snapshot(key, valueOption, seq)
       def resendMsg: Unit = {
-      acks.get(seq) match {
-        case Some((_, Replicate(key, valueOption, seq_))) =>
-          replica ! Snapshot(key, valueOption, seq_)
-          context.system.scheduler.scheduleOnce(250 millis)(resendMsg)
-        case None =>
+        acks.get(seq) match {
+          case Some((_, Replicate(key, valueOption, seq_))) =>
+            replica ! Snapshot(key, valueOption, seq_)
+            context.system.scheduler.scheduleOnce(250 millis)(resendMsg)
+          case None =>
+        }
       }
-    }
-      context.system.scheduler.scheduleOnce(250 millis)(resendMsg)
+      resendMsg
+
     case SnapshotAck(key, seq) =>
       acks -= seq
   }
