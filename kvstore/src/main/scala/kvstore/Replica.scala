@@ -12,6 +12,7 @@ import akka.actor.PoisonPill
 import akka.actor.OneForOneStrategy
 import akka.actor.SupervisorStrategy
 import akka.util.Timeout
+import scala.language.postfixOps
 
 object Replica {
   sealed trait Operation {
@@ -73,9 +74,11 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
 
   /* TODO Behavior for the replica role. */
   val replica: Receive = {
+
     case Get(key, id) =>
       val valueOption = kv.get(key)
       sender ! GetResult(key, valueOption, id)
+
     case Snapshot(key, valueOption, seq) =>
       if(seq < snapshotSeq)
         sender ! SnapshotAck(key, seq)
@@ -87,7 +90,13 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
         }
         snapshotSeq += 1
         acks += seq -> sender
-        persistence ! Persist(key, valueOption, seq)
+        def resendPersist: Unit = {
+          if(acks.contains(seq)) {
+            persistence ! Persist(key, valueOption, seq)
+            context.system.scheduler.scheduleOnce(100 millis)(resendPersist)
+          }
+        }
+        resendPersist
       }
 
     case Persisted(key, id) =>
