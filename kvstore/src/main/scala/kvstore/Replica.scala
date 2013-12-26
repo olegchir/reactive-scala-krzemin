@@ -122,16 +122,18 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
     case Replicated(key, id) =>
       println("received Replicated", sender, replicateAcks)
       println("failure generators", failureGenerators)
-      val (origSender, currAckSet) = replicateAcks(id)
-      val newAckSet = currAckSet - sender
-      if (newAckSet.isEmpty)
-        replicateAcks -= id
-      else
-        replicateAcks = replicateAcks.updated(id, (origSender, newAckSet))
-      if(!replicateAcks.contains(id) && !persistAcks.contains(id)) {
-        failureGenerators(id).cancel()
-        failureGenerators -= id
-        origSender ! OperationAck(id)
+      if(replicateAcks.contains(id)) {
+        val (origSender, currAckSet) = replicateAcks(id)
+        val newAckSet = currAckSet - sender
+        if (newAckSet.isEmpty)
+          replicateAcks -= id
+        else
+          replicateAcks = replicateAcks.updated(id, (origSender, newAckSet))
+        if(!replicateAcks.contains(id) && !persistAcks.contains(id)) {
+          failureGenerators(id).cancel()
+          failureGenerators -= id
+          origSender ! OperationAck(id)
+        }
       }
 
     case GenerateFailure(id) =>
@@ -154,6 +156,11 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
       replicators.foreach( replicator => replicator ! PoisonPill )
       replicators = set.filterNot(_ == self).map { replica =>
         context.actorOf(Replicator.props(replica))
+      }
+      replicators.foreach { replicator =>
+        kv.zipWithIndex.foreach { case ((k,v), idx) =>
+          replicator ! Replicate(k, Some(v), idx)
+        }
       }
 
   }
