@@ -1,8 +1,6 @@
 package kvstore
 
-import akka.actor.Props
-import akka.actor.Actor
-import akka.actor.ActorRef
+import akka.actor.{Cancellable, Props, Actor, ActorRef}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -29,7 +27,9 @@ class Replicator(val replica: ActorRef) extends Actor {
   var acks = Map.empty[Long, (ActorRef, Replicate)]
   // a sequence of not-yet-sent snapshots (you can disregard this if not implementing batching)
   var pending = Vector.empty[Snapshot]
-  
+
+  var repeaters = Map.empty[Long, Cancellable]
+
   var _seqCounter = 0L
   def nextSeq = {
     val ret = _seqCounter
@@ -39,20 +39,21 @@ class Replicator(val replica: ActorRef) extends Actor {
 
   /* TODO Behavior for the Replicator. */
   def receive: Receive = {
-    case replicate @ Replicate(key, valueOption, seq) =>
+    case replicate @ Replicate(key, valueOption, id) =>
+      val seq = nextSeq
       acks += seq -> (sender, replicate)
-      def resendMsg: Unit = {
-        acks.get(seq) match {
-          case Some((_, Replicate(key, valueOption, seq_))) =>
-            replica ! Snapshot(key, valueOption, seq_)
-            context.system.scheduler.scheduleOnce(250 millis)(resendMsg)
-          case None =>
-        }
-      }
-      resendMsg
+
+      val snapshotRepeater = context.system.scheduler.schedule(
+        250 millis, 250 millis, replica, Snapshot(key, valueOption, seq))
+
+      repeaters += seq -> snapshotRepeater
 
     case SnapshotAck(key, seq) =>
+      val (sender, Replicate(key, _, id)) = acks(seq)
       acks -= seq
+      repeaters(seq).cancel()
+      repeaters -= seq
+      sender ! Replicated(key, id)
   }
 
 }
