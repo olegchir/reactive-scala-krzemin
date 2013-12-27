@@ -187,8 +187,7 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
   val replica: Receive = LoggingReceive {
 
     case Get(key, id) =>
-      val valueOption = kv.get(key)
-      sender ! GetResult(key, valueOption, id)
+      sender ! GetResult(key, kv.get(key), id)
 
     case Snapshot(key, valueOption, seq) =>
       if(seq < snapshotSeq)
