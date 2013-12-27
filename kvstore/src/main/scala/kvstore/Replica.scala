@@ -120,8 +120,6 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
       }
 
     case Replicated(key, id) =>
-      println("received Replicated", sender, replicateAcks)
-      println("failure generators", failureGenerators)
       if(replicateAcks.contains(id)) {
         val (origSender, currAckSet) = replicateAcks(id)
         val newAckSet = currAckSet - sender
@@ -152,12 +150,32 @@ class Replica(val arbiter: ActorRef, persistenceProps: Props) extends Actor {
         origSender ! OperationFailed(id)
       }
 
-    case Replicas(set) =>
-      replicators.foreach( replicator => replicator ! PoisonPill )
-      replicators = set.filterNot(_ == self).map { replica =>
-        context.actorOf(Replicator.props(replica))
+    case Replicas(replicas) =>
+      val secondaryReplicas = replicas.filterNot(_ == self)
+      val removed = secondaries.keySet -- secondaryReplicas
+      val added = secondaryReplicas -- secondaries.keySet
+
+      var addedSecondaries = Map.empty[ActorRef, ActorRef]
+      val addedReplicators = added.map { replica =>
+        val replicator = context.actorOf(Replicator.props(replica))
+        addedSecondaries += replica -> replicator
+        replicator
       }
-      replicators.foreach { replicator =>
+
+      removed.foreach( replica => secondaries(replica) ! PoisonPill )
+
+      removed.foreach { replica =>
+        replicateAcks.foreach { case (id, (origSender, rs)) =>
+          if (rs.contains(secondaries(replica))) {
+            self.tell(Replicated("", id), secondaries(replica))
+          }
+        }
+      }
+
+      replicators = replicators -- removed.map(secondaries) ++ addedReplicators
+      secondaries = secondaries -- removed ++ addedSecondaries
+
+      addedReplicators.foreach { replicator =>
         kv.zipWithIndex.foreach { case ((k,v), idx) =>
           replicator ! Replicate(k, Some(v), idx)
         }
