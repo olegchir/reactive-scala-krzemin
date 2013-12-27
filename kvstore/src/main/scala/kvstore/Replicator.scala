@@ -3,6 +3,7 @@ package kvstore
 import akka.actor.{Cancellable, Props, Actor, ActorRef}
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import akka.event.LoggingReceive
 
 object Replicator {
   case class Replicate(key: String, valueOption: Option[String], id: Long)
@@ -38,7 +39,7 @@ class Replicator(val replica: ActorRef) extends Actor {
   }
 
   /* TODO Behavior for the Replicator. */
-  def receive: Receive = {
+  def receive: Receive = LoggingReceive {
     case replicate @ Replicate(key, valueOption, id) =>
       val seq = nextSeq
       acks += seq -> (sender, replicate)
@@ -49,11 +50,13 @@ class Replicator(val replica: ActorRef) extends Actor {
       repeaters += seq -> snapshotRepeater
 
     case SnapshotAck(key, seq) =>
-      val (sender, Replicate(key, _, id)) = acks(seq)
-      acks -= seq
-      repeaters(seq).cancel()
-      repeaters -= seq
-      sender ! Replicated(key, id)
+      if(acks.contains(seq)) {
+        val (sender, Replicate(key, _, id)) = acks(seq)
+        acks -= seq
+        repeaters(seq).cancel()
+        repeaters -= seq
+        sender ! Replicated(key, id)
+      }
   }
 
 }
